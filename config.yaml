@@ -1,55 +1,99 @@
 # ============================================================
 # D.A.P.S-SIGNALS Ω — Scanner Cuantitativo
-# Configuración Central v2.0.0 — ROBUSTA
-# ============================================================
-# Los pesos son auto-normalizados si no suman 1.0.
-# Validación estricta solo en errores graves.
+# Configuración Central v3.0.0 — OPTIMIZADA
+# Universo: Top 70 activos por market cap (CoinLore, Sep 2026)
 # ============================================================
 
 project:
   name: "D.A.P.S-SIGNALS Ω"
-  version: "2.0.0"
-  mode: "manual"           # manual | testnet | live
+  version: "3.0.0"
+  mode: "manual"
   timezone: "UTC"
   language: "es"
 
 # ------------------------------------------------------------
-# UNIVERSO DE ACTIVOS
+# UNIVERSO: TOP 70 POR MARKET CAP
+# Fuente: CoinLore Top 100 Coins (Sep 2026)
+# Excluidos: stablecoins (USDT, USDC, DAI, etc.),
+#            wrapped tokens (STETH, WBTC, WBETH, etc.)
 # ------------------------------------------------------------
 symbols:
-  large_cap:
+  top_10:
     - BTC/USDT
     - ETH/USDT
-    - SOL/USDT
     - BNB/USDT
     - XRP/USDT
-  mid_cap:
-    - ADA/USDT
-    - AVAX/USDT
-    - DOT/USDT
-    - LINK/USDT
-    - MATIC/USDT
-    - ATOM/USDT
-    - LTC/USDT
-    - ETC/USDT
-    - NEAR/USDT
-    - APT/USDT
-  altcoins:
-    - ARB/USDT
-    - OP/USDT
-    - INJ/USDT
-    - SUI/USDT
-    - UNI/USDT
+    - SOL/USDT
+    - TRX/USDT
+    - ZEC/USDT
     - DOGE/USDT
-    - PEPE/USDT
-    - WIF/USDT
-    - SEI/USDT
+    - XMR/USDT
+    - LINK/USDT
+  top_11_30:
+    - ADA/USDT
+    - XLM/USDT
+    - BCH/USDT
+    - TON/USDT
+    - LTC/USDT
+    - NEAR/USDT
+    - SUI/USDT
+    - DOT/USDT
+    - ETC/USDT
+    - KAS/USDT
+    - ALGO/USDT
+    - QNT/USDT
+    - ATOM/USDT
+    - DASH/USDT
+    - VET/USDT
+    - FIL/USDT
+    - STX/USDT
     - TIA/USDT
-    - JUP/USDT
-    - PYTH/USDT
+    - DCR/USDT
+    - XTZ/USDT
+  top_31_70:
+    - CFX/USDT
+    - KAIA/USDT
+    - IOTA/USDT
+    - NEO/USDT
+    - MANA/USDT
+    - GLM/USDT
+    - ZEN/USDT
+    - QTUM/USDT
+    - ZRX/USDT
+    - AIOZ/USDT
+    - HNT/USDT
+    - DGB/USDT
+    - ZANO/USDT
+    - KAVA/USDT
+    - TFUEL/USDT
+    - HOT/USDT
+    - ZIG/USDT
+    - SC/USDT
+    - ZIL/USDT
+    - CKB/USDT
+    - LSK/USDT
+    - ONT/USDT
+    - CTC/USDT
+    - TRB/USDT
+    - BFC/USDT
+    - NANO/USDT
+    - AXL/USDT
+    - FLOW/USDT
+    - ARRR/USDT
+    - XVG/USDT
+    - COTI/USDT
+    - CSPR/USDT
+    - G/USDT
+    - RON/USDT
+    - PLUME/USDT
+    - RVN/USDT
+    - WAVES/USDT
+    - PEAQ/USDT
+    - VANA/USDT
+    - IOTX/USDT
 
 # ------------------------------------------------------------
-# EXCHANGES — Fallback en cascada
+# EXCHANGES
 # ------------------------------------------------------------
 exchanges:
   priority:
@@ -78,9 +122,7 @@ timeframes:
   min_bars_required: 200
 
 # ------------------------------------------------------------
-# SCORING — PESOS (auto-normalizados si no suman 1.0)
-# ------------------------------------------------------------
-# Verificación manual: 0.17 + 0.15 + 0.40 + 0.11 + 0.10 + 0.07 = 1.00
+# SCORING — PESOS OPTIMIZADOS
 # ------------------------------------------------------------
 scoring:
   weights:
@@ -90,30 +132,34 @@ scoring:
     volatility: 0.11
     liquidity: 0.10
     regime: 0.07
-
-  normalization: "robust"        # robust | minmax | zscore
+    # Suma: 1.00 ✓
+  auto_normalize: true
+  normalization: "robust"
   robust_epsilon: 1.0e-9
-  auto_normalize: true           # Auto-normaliza si no suman 1.0
-
+  calibration:
+    enabled: true
+    method: "isotonic"
+    min_samples: 50
   sub_weights:
     volume:
       tfi: 0.35
       ofi: 0.25
       rvol: 0.25
       cvd: 0.15
+      # Suma: 1.00 ✓
 
 # ------------------------------------------------------------
-# UMBRALES DE SEÑAL
+# UMBRALES DINÁMICOS POR RÉGIMEN
 # ------------------------------------------------------------
 thresholds:
-  min_score: 75.0
-  min_score_long: 75.0
-  min_score_short: 75.0
-  min_volume_ratio: 1.5
-  min_adx: 20.0
-  min_atr_pct: 0.003
-  max_atr_pct: 0.025
+  regime_thresholds:
+    Expansion:    {min_score: 75, min_adx: 20, min_rvol: 1.5}
+    Trend_Strong: {min_score: 75, min_adx: 25, min_rvol: 1.5}
+    Trend_Weak:   {min_score: 70, min_adx: 20, min_rvol: 1.8}
+    Chop:         {min_score: 65, min_adx: 15, min_rvol: 2.0}
   min_prob_directional: 0.60
+  max_cost_pct: 0.0016
+  min_expected_move_pct: 0.0032   # 2× costo round trip
 
 # ------------------------------------------------------------
 # GESTIÓN DE RIESGO
@@ -124,7 +170,7 @@ risk:
   max_concurrent_positions: 3
   max_daily_drawdown: 0.03
   max_leverage: 10
-
+  use_volatility_sizing: true
   leverage_by_score:
     "90-100": 5
     "85-90": 4
@@ -138,31 +184,35 @@ risk:
     atr_mult_by_symbol:
       BTC/USDT: 1.8
       ETH/USDT: 1.8
-      SOL/USDT: 2.0
-      XRP/USDT: 1.5
-      ADA/USDT: 2.0
-      AVAX/USDT: 1.8
       BNB/USDT: 1.8
-      DOT/USDT: 2.0
-      LINK/USDT: 2.0
-      MATIC/USDT: 2.5
-      ATOM/USDT: 2.0
-      LTC/USDT: 2.0
-      ETC/USDT: 2.0
-      NEAR/USDT: 2.5
-      APT/USDT: 2.5
-      INJ/USDT: 2.5
-      SUI/USDT: 2.5
-      UNI/USDT: 2.5
+      XRP/USDT: 1.5
+      SOL/USDT: 2.0
+      TRX/USDT: 2.0
+      ZEC/USDT: 2.5
       DOGE/USDT: 2.5
-      PEPE/USDT: 3.0
-      WIF/USDT: 3.0
-      SEI/USDT: 2.5
+      XMR/USDT: 2.0
+      LINK/USDT: 2.0
+      ADA/USDT: 2.0
+      XLM/USDT: 2.0
+      BCH/USDT: 2.0
+      TON/USDT: 2.0
+      LTC/USDT: 2.0
+      NEAR/USDT: 2.5
+      SUI/USDT: 2.5
+      DOT/USDT: 2.0
+      ETC/USDT: 2.0
+      KAS/USDT: 2.5
+      ALGO/USDT: 2.5
+      QNT/USDT: 2.5
+      ATOM/USDT: 2.0
+      DASH/USDT: 2.5
+      VET/USDT: 2.5
+      FIL/USDT: 2.5
+      STX/USDT: 2.5
       TIA/USDT: 2.5
-      JUP/USDT: 2.5
-      PYTH/USDT: 2.5
-      ARB/USDT: 2.5
-      OP/USDT: 2.5
+      DCR/USDT: 2.5
+      XTZ/USDT: 2.0
+      default: 2.0
     min_pct: 0.0015
     max_pct: 0.0200
 
@@ -172,36 +222,31 @@ risk:
     min_pct: 0.0030
 
   trailing:
-    activation_atr: 0.50
-    distance_atr_by_symbol:
+    atr_mult_default: 2.0
+    atr_mult_by_symbol:
       BTC/USDT: 1.8
       ETH/USDT: 1.8
-      SOL/USDT: 2.0
-      XRP/USDT: 1.5
-      ADA/USDT: 2.0
-      AVAX/USDT: 2.0
       BNB/USDT: 1.8
-      DOT/USDT: 2.0
-      LINK/USDT: 2.0
-      MATIC/USDT: 2.5
-      ATOM/USDT: 2.0
-      LTC/USDT: 2.0
-      ETC/USDT: 2.0
-      NEAR/USDT: 2.5
-      APT/USDT: 2.5
-      INJ/USDT: 2.5
-      SUI/USDT: 2.5
-      UNI/USDT: 2.5
+      XRP/USDT: 1.5
+      SOL/USDT: 2.0
+      TRX/USDT: 2.0
+      ZEC/USDT: 2.5
       DOGE/USDT: 2.5
-      PEPE/USDT: 3.0
-      WIF/USDT: 3.0
-      SEI/USDT: 2.5
-      TIA/USDT: 2.5
-      JUP/USDT: 2.5
-      PYTH/USDT: 2.5
-      ARB/USDT: 2.5
-      OP/USDT: 2.5
+      XMR/USDT: 2.0
+      LINK/USDT: 2.0
+      ADA/USDT: 2.0
+      XLM/USDT: 2.0
+      BCH/USDT: 2.0
+      TON/USDT: 2.0
+      LTC/USDT: 2.0
+      NEAR/USDT: 2.5
+      SUI/USDT: 2.5
+      DOT/USDT: 2.0
+      ETC/USDT: 2.0
       default: 2.0
+    floor: 0.03
+    cap: 0.08
+    activation_atr: 0.50
     breakeven_trigger_atr: 0.25
 
 # ------------------------------------------------------------
@@ -219,15 +264,18 @@ costs:
 backtest:
   min_history_days: 180
   default_scan_every_n_bars: 5
-  max_symbols_backtest: 10
+  max_symbols_backtest: 20
   walk_forward:
     train_months: 3
-    validation_months: 1
-    oos_months: 1
-    purge_gap_bars: 48
+    test_months: 1
+    purge_bars: 48
   monte_carlo:
     n_simulations: 10000
     random_seed: 42
+  deflated_sharpe:
+    enabled: true
+    min_dsr: 0.0
+    max_p_value: 0.05
 
 # ------------------------------------------------------------
 # OPTIMIZACIÓN
@@ -272,24 +320,6 @@ tiers:
   NO_TRADE: 0.0
 
 # ------------------------------------------------------------
-# VENTANAS HORARIAS (UTC)
-# ------------------------------------------------------------
-trading_hours:
-  best_hours_utc: [2, 3, 4, 13, 14, 15, 16]
-  worst_hours_utc: [8, 9, 20, 21]
-  hour_adjustment:
-    best_multiplier: 1.05
-    worst_multiplier: 0.92
-  enabled: false
-
-# ------------------------------------------------------------
-# VENTANAS ESTRELLA (NO VALIDADO — DESACTIVADO)
-# ------------------------------------------------------------
-star_windows:
-  enabled: false
-  windows: []
-
-# ------------------------------------------------------------
 # LÍMITES DE SEGURIDAD
 # ------------------------------------------------------------
 safety:
@@ -299,9 +329,6 @@ safety:
   min_time_between_trades: 300
   require_confirmation: true
 
-# ------------------------------------------------------------
-# RECOMENDACIONES DE PYTHON/PYARROW
-# ------------------------------------------------------------
 runtime:
-  python_version: "3.11"       # Recomendado (3.14 puede tener issues)
-  pyarrow_max: "24.0.0"        # Evita segfault conocido
+  python_version: "3.11"
+  pyarrow_max: "24.0.0"
