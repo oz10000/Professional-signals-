@@ -1,0 +1,238 @@
+# ============================================================
+# D.A.P.S-SIGNALS Ω — Scanner Cuantitativo
+# Configuración Central v1.0.0
+# ============================================================
+
+project:
+  name: "D.A.P.S-SIGNALS Ω"
+  version: "1.0.0"
+  mode: "manual"           # manual | testnet | live
+  timezone: "UTC"
+
+# ------------------------------------------------------------
+# UNIVERSO DE ACTIVOS
+# ------------------------------------------------------------
+symbols:
+  large_cap:
+    - BTC/USDT
+    - ETH/USDT
+    - SOL/USDT
+    - BNB/USDT
+    - XRP/USDT
+  mid_cap:
+    - ADA/USDT
+    - AVAX/USDT
+    - DOT/USDT
+    - LINK/USDT
+    - MATIC/USDT
+    - ATOM/USDT
+    - LTC/USDT
+    - ETC/USDT
+    - NEAR/USDT
+    - APT/USDT
+  altcoins:
+    - ARB/USDT
+    - OP/USDT
+    - INJ/USDT
+    - SUI/USDT
+    - UNI/USDT
+    - DOGE/USDT
+    - PEPE/USDT
+    - WIF/USDT
+    - SEI/USDT
+    - TIA/USDT
+    - JUP/USDT
+    - PYTH/USDT
+
+# ------------------------------------------------------------
+# EXCHANGES (fallback en cascada)
+# ------------------------------------------------------------
+exchanges:
+  priority:
+    - okx
+    - kraken
+    - mexc
+    - kucoin
+    - gateio
+    - bitget
+  blocked:
+    - binance    # bloquea IPs cloud
+    - bybit      # bloquea IPs cloud
+  rate_limit: true
+  timeout_ms: 30000
+
+# ------------------------------------------------------------
+# TIMEFRAMES
+# ------------------------------------------------------------
+timeframes:
+  entry: "5m"
+  confirm: "15m"
+  trend: "1h"
+  history_limit: 2000
+
+# ------------------------------------------------------------
+# SCORING — PESOS OPTIMIZADOS
+# ------------------------------------------------------------
+scoring:
+  weights:
+    trend: 0.18
+    momentum: 0.16
+    volume_intelligence: 0.44
+    volatility: 0.12
+    liquidity: 0.10
+    regime: 0.08
+  normalization: "robust"    # robust | minmax | zscore
+  robust_epsilon: 1.0e-9
+
+  sub_weights:
+    volume:
+      tfi: 0.35
+      ofi: 0.25
+      rvol: 0.25
+      cvd: 0.15
+
+# ------------------------------------------------------------
+# UMBRALES DE SEÑAL
+# ------------------------------------------------------------
+thresholds:
+  min_score: 75.0
+  min_score_long: 75.0
+  min_score_short: 75.0
+  min_volume_ratio: 1.5
+  min_adx: 20.0
+  min_atr_pct: 0.003
+  max_atr_pct: 0.025
+  min_prob_directional: 0.60   # P(LONG) > 0.60 o P(SHORT) > 0.60
+
+# ------------------------------------------------------------
+# GESTIÓN DE RIESGO
+# ------------------------------------------------------------
+risk:
+  initial_capital: 10000.0
+  risk_per_trade: 0.01          # 1% por trade
+  max_concurrent_positions: 3
+  max_daily_drawdown: 0.03
+  max_leverage: 10
+  leverage_by_score:
+    "90-100": 5
+    "85-90": 4
+    "80-85": 3
+    "75-80": 2
+    "0-75": 1
+
+  stop_loss:
+    method: "atr"               # fixed | atr
+    atr_mult_default: 1.8
+    atr_mult_by_symbol:
+      BTC/USDT: 1.8
+      ETH/USDT: 1.8
+      SOL/USDT: 2.0
+      XRP/USDT: 1.5
+      ADA/USDT: 2.0
+      AVAX/USDT: 1.8
+    min_pct: 0.0015
+    max_pct: 0.0200
+
+  take_profit:
+    method: "atr"
+    atr_mult_default: 2.5
+    min_pct: 0.0030
+
+  trailing:
+    activation_atr: 0.50        # 0.50 × ATR
+    distance_atr_by_symbol:
+      BTC/USDT: 1.8
+      ETH/USDT: 1.8
+      SOL/USDT: 2.0
+      XRP/USDT: 1.5
+      ADA/USDT: 2.0
+      AVAX/USDT: 2.0
+      default: 2.0
+    breakeven_trigger_atr: 0.25
+
+# ------------------------------------------------------------
+# COSTOS OPERATIVOS
+# ------------------------------------------------------------
+costs:
+  fee_per_side: 0.0005          # 0.05% taker
+  slippage: 0.0003
+  spread: 0.0002
+  funding_rate_8h: 0.0001
+
+# ------------------------------------------------------------
+# BACKTEST Y VALIDACIÓN
+# ------------------------------------------------------------
+backtest:
+  min_history_days: 180
+  walk_forward:
+    train_months: 3
+    validation_months: 1
+    oos_months: 1
+    purge_gap_bars: 48
+  monte_carlo:
+    n_simulations: 10000
+    random_seed: 42
+  metrics:
+    - win_rate
+    - profit_factor
+    - sharpe
+    - max_drawdown
+    - expectancy
+    - consecutive_losses
+    - avg_duration
+
+# ------------------------------------------------------------
+# OPTIMIZACIÓN
+# ------------------------------------------------------------
+optimization:
+  method: "bayesian"            # bayesian | grid | genetic
+  n_calls: 50
+  n_initial_points: 10
+  objective: "composite"        # composite | sharpe | profit_factor
+  objective_weights:
+    sharpe: 0.40
+    profit_factor: 0.30
+    max_drawdown: 0.30
+
+# ------------------------------------------------------------
+# DIRECTORIOS
+# ------------------------------------------------------------
+directories:
+  cache: "./cache"
+  data: "./data"
+  logs: "./logs"
+  reports: "./reports"
+
+# ------------------------------------------------------------
+# LOGGING
+# ------------------------------------------------------------
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# ------------------------------------------------------------
+# TIER THRESHOLDS (para clasificación)
+# ------------------------------------------------------------
+tiers:
+  OMEGA: 90.0
+  S: 80.0
+  A: 70.0
+  B: 60.0
+  NO_TRADE: 0.0
+
+# ------------------------------------------------------------
+# VENTANAS HORARIAS (UTC)
+# ------------------------------------------------------------
+trading_hours:
+  best_hours_utc: [2, 3, 4, 13, 14, 15, 16]
+  worst_hours_utc: [8, 9, 20, 21]
+  hour_adjustment:
+    best_multiplier: 1.05
+    worst_multiplier: 0.92
+
+# ------------------------------------------------------------
+# VENTANAS ESTRELLA (opcional, no validado)
+# ------------------------------------------------------------
+star_windows:
+  enabled: false                # Desactivado: no validado históricamente
+  windows: []
