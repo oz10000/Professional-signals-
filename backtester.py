@@ -1,5 +1,5 @@
 """
-Motor de backtesting con manejo defensivo de errores.
+Motor de backtesting con walk-forward, Monte Carlo y DSR.
 """
 
 import logging
@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Trade:
-    """Operación completada."""
     symbol: str
     direction: str
     entry_time: pd.Timestamp
@@ -39,7 +38,6 @@ class Trade:
 
 @dataclass
 class BacktestResult:
-    """Resultado del backtest."""
     trades: List[Trade] = field(default_factory=list)
     metrics: Dict = field(default_factory=dict)
     equity_curve: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
@@ -59,9 +57,7 @@ class Backtester:
             start_date: Optional[str] = None,
             end_date: Optional[str] = None,
             scan_every_n_bars: int = 5) -> BacktestResult:
-        """Ejecuta backtest sobre universo de activos."""
         try:
-            # Recolectar timestamps
             all_ts = set()
             for sym_data in data_dict.values():
                 df = sym_data.get('5m') if isinstance(sym_data, dict) else None
@@ -69,7 +65,6 @@ class Backtester:
                     all_ts.update(df.index.tolist())
             
             if not all_ts:
-                logger.warning("No hay timestamps para backtest")
                 return BacktestResult(metrics={'error': 'Sin datos'})
             
             timestamps = sorted(all_ts)
@@ -88,7 +83,6 @@ class Backtester:
             max_concurrent = self.risk.get('max_concurrent_positions', 3)
             
             for i, ts in enumerate(timestamps):
-                # 1. Actualizar posiciones abiertas
                 closed = []
                 for symbol, pos in list(open_positions.items()):
                     try:
@@ -98,7 +92,6 @@ class Backtester:
                         row = df.loc[ts]
                         if isinstance(row, pd.DataFrame):
                             row = row.iloc[0]
-                        
                         exit_reason = self._update_position(pos, row)
                         if exit_reason:
                             trade = self._close_position(pos, ts, float(row['close']), exit_reason)
@@ -113,18 +106,13 @@ class Backtester:
                 for sym in closed:
                     open_positions.pop(sym, None)
                 
-                # 2. Buscar nuevas señales
                 if i % scan_every_n_bars == 0 and len(open_positions) < max_concurrent:
                     for symbol, sym_data in data_dict.items():
-                        if symbol in open_positions:
+                        if symbol in open_positions or not isinstance(sym_data, dict):
                             continue
-                        if not isinstance(sym_data, dict):
-                            continue
-                        
                         df_5m = sym_data.get('5m')
                         if df_5m is None or ts not in df_5m.index:
                             continue
-                        
                         try:
                             df_5m_slice = df_5m.loc[:ts].tail(500)
                             df_15m = sym_data.get('15m')
@@ -153,7 +141,6 @@ class Backtester:
                         except Exception as e:
                             logger.debug(f"Error señal {symbol}: {e}")
                 
-                # 3. Registrar equity
                 equity = capital
                 for pos in open_positions.values():
                     try:
@@ -168,10 +155,8 @@ class Backtester:
                                 equity += unrealized
                     except Exception:
                         pass
-                
                 equity_curve.append(equity)
             
-            # Cerrar posiciones abiertas
             for symbol, pos in open_positions.items():
                 try:
                     df = data_dict[symbol]['5m']
@@ -197,10 +182,7 @@ class Backtester:
             logger.error(f"Error en backtest: {e}", exc_info=True)
             return BacktestResult(metrics={'error': str(e)[:200]})
     
-    def _create_position(self, symbol: str, direction: str, entry: float,
-                         atr: float, score: float, capital: float,
-                         timestamp: pd.Timestamp) -> Optional[Dict]:
-        """Crea posición con gestión de riesgo."""
+    def _create_position(self, symbol, direction, entry, atr, score, capital, timestamp):
         try:
             if entry <= 0 or atr <= 0:
                 return None
@@ -242,35 +224,24 @@ class Backtester:
             be_trigger = self.risk.get('trailing', {}).get('breakeven_trigger_atr', 0.25) * atr
             
             return {
-                'symbol': symbol,
-                'direction': direction,
-                'entry': entry,
-                'entry_time': timestamp,
-                'stop_loss': stop_loss,
-                'take_profit': take_profit,
-                'initial_stop': stop_loss,
-                'be_price': be_price,
-                'be_trigger': be_trigger,
-                'trailing_dist': trailing_dist,
+                'symbol': symbol, 'direction': direction,
+                'entry': entry, 'entry_time': timestamp,
+                'stop_loss': stop_loss, 'take_profit': take_profit,
+                'initial_stop': stop_loss, 'be_price': be_price,
+                'be_trigger': be_trigger, 'trailing_dist': trailing_dist,
                 'trailing_activation': trailing_activation,
-                'best_price': entry,
-                'size': size,
-                'leverage': leverage,
-                'score': score,
-                'be_triggered': False,
-                'trailing_active': False,
+                'best_price': entry, 'size': size, 'leverage': leverage,
+                'score': score, 'be_triggered': False, 'trailing_active': False,
             }
         except Exception as e:
             logger.debug(f"Error creando posición {symbol}: {e}")
             return None
     
-    def _update_position(self, pos: Dict, row: pd.Series) -> Optional[str]:
-        """Actualiza posición. Retorna razón de cierre si aplica."""
+    def _update_position(self, pos, row):
         try:
             high = float(row['high'])
             low = float(row['low'])
             close = float(row['close'])
-            
             if high != high or low != low or close != close:
                 return None
             
@@ -300,15 +271,12 @@ class Backtester:
                     pos['best_price'] = min(pos['best_price'], low)
                     new_stop = pos['best_price'] + pos['trailing_dist']
                     pos['stop_loss'] = min(pos['stop_loss'], new_stop)
-            
             return None
         except Exception as e:
             logger.debug(f"Error actualizando posición: {e}")
             return None
     
-    def _close_position(self, pos: Dict, timestamp: pd.Timestamp,
-                        exit_price: float, reason: str) -> Optional[Trade]:
-        """Cierra posición y genera Trade."""
+    def _close_position(self, pos, timestamp, exit_price, reason):
         try:
             if exit_price <= 0:
                 return None
@@ -325,30 +293,19 @@ class Backtester:
             duration = (timestamp - pos['entry_time']).total_seconds() / 60
             
             return Trade(
-                symbol=pos['symbol'],
-                direction=pos['direction'],
-                entry_time=pos['entry_time'],
-                exit_time=timestamp,
-                entry_price=pos['entry'],
-                exit_price=exit_price,
-                stop_loss=pos['stop_loss'],
-                take_profit=pos['take_profit'],
-                position_size=pos['size'],
-                leverage=pos['leverage'],
-                pnl=pnl,
-                pnl_pct=pnl_pct * 100,
-                exit_reason=reason,
-                score=pos['score'],
-                duration_minutes=duration,
-                mfe=mfe * 100,
+                symbol=pos['symbol'], direction=pos['direction'],
+                entry_time=pos['entry_time'], exit_time=timestamp,
+                entry_price=pos['entry'], exit_price=exit_price,
+                stop_loss=pos['stop_loss'], take_profit=pos['take_profit'],
+                position_size=pos['size'], leverage=pos['leverage'],
+                pnl=pnl, pnl_pct=pnl_pct * 100, exit_reason=reason,
+                score=pos['score'], duration_minutes=duration, mfe=mfe * 100,
             )
         except Exception as e:
             logger.debug(f"Error cerrando posición: {e}")
             return None
     
-    def _compute_metrics(self, trades: List[Trade],
-                         equity: pd.Series) -> Dict:
-        """Calcula métricas de rendimiento con defensa."""
+    def _compute_metrics(self, trades, equity):
         if not trades:
             return {
                 'total_trades': 0, 'win_rate': 0.0, 'profit_factor': 0.0,
@@ -362,20 +319,14 @@ class Backtester:
         try:
             wins = [t for t in trades if t.pnl > 0]
             losses = [t for t in trades if t.pnl <= 0]
-            
-            win_rate = len(wins) / len(trades) if trades else 0
-            
+            win_rate = len(wins) / len(trades)
             gross_profit = sum(t.pnl for t in wins)
             gross_loss = abs(sum(t.pnl for t in losses))
-            pf = gross_profit / gross_loss if gross_loss > 0 else (
-                float('inf') if gross_profit > 0 else 0.0
-            )
-            
+            pf = gross_profit / gross_loss if gross_loss > 0 else (float('inf') if gross_profit > 0 else 0.0)
             avg_win = float(np.mean([t.pnl for t in wins])) if wins else 0.0
             avg_loss = float(np.mean([t.pnl for t in losses])) if losses else 0.0
             expectancy = win_rate * avg_win + (1 - win_rate) * avg_loss
             
-            # Drawdown
             if len(equity) > 1:
                 peak = equity.expanding().max()
                 dd = (equity - peak) / peak.replace(0, np.nan)
@@ -385,7 +336,6 @@ class Backtester:
             else:
                 max_dd = 0.0
             
-            # Sharpe
             if len(equity) > 1:
                 returns = equity.pct_change().dropna()
                 if len(returns) > 1 and returns.std() > 0:
@@ -397,7 +347,6 @@ class Backtester:
             else:
                 sharpe = 0.0
             
-            # Racha
             max_streak = 0
             streak = 0
             for t in trades:
@@ -407,22 +356,18 @@ class Backtester:
                 else:
                     streak = 0
             
-            # Duración
             durations = [t.duration_minutes for t in trades]
             avg_dur = float(np.mean(durations)) if durations else 0.0
             
-            # Trades/día
             if len(equity) > 1:
                 days = (equity.index[-1] - equity.index[0]).total_seconds() / 86400
                 tpd = len(trades) / max(days, 1)
             else:
                 tpd = 0.0
             
-            # Leverage
             avg_lev = float(np.mean([t.leverage for t in trades]))
             total_pnl = float(equity.iloc[-1] - equity.iloc[0]) if len(equity) > 0 else 0.0
             pnl_per_lev = total_pnl / max(avg_lev, 1.0)
-            
             total_ret = ((equity.iloc[-1] / equity.iloc[0] - 1) * 100) if len(equity) > 0 and equity.iloc[0] > 0 else 0.0
             
             return {
