@@ -1,5 +1,5 @@
 """
-Optimización Bayesiana de pesos del scoring.
+Optimización Bayesiana de pesos con fallback a random search.
 """
 
 import logging
@@ -14,6 +14,7 @@ try:
     SKOPT_AVAILABLE = True
 except ImportError:
     SKOPT_AVAILABLE = False
+    logging.warning("skopt no disponible, usando random search")
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,11 @@ class OptimizationResult:
     best_score: float
     convergence: List[float]
     n_iterations: int
+    method: str = "unknown"
 
 
 class BayesianWeightOptimizer:
-    """Optimizador Bayesiano de pesos con TPE."""
+    """Optimizador Bayesiano con fallback a random search."""
     
     PARAM_NAMES = [
         'trend', 'momentum', 'volume_intelligence',
@@ -38,10 +40,29 @@ class BayesianWeightOptimizer:
     def optimize(self, objective_fn: Callable[[Dict], float],
                  n_calls: int = 50,
                  n_initial_points: int = 10) -> OptimizationResult:
-        """Optimiza pesos del scoring."""
-        if not SKOPT_AVAILABLE:
-            return self._fallback(objective_fn, n_calls)
+        """
+        Optimiza pesos del scoring.
         
+        Args:
+            objective_fn: Función que toma dict de pesos y retorna score.
+            n_calls: Número de evaluaciones.
+            n_initial_points: Puntos iniciales aleatorios.
+        
+        Returns:
+            OptimizationResult con mejores pesos.
+        """
+        if SKOPT_AVAILABLE:
+            try:
+                return self._optimize_bayesian(objective_fn, n_calls, n_initial_points)
+            except Exception as e:
+                logger.warning(f"Bayesian optimization falló: {e}. Usando random search.")
+        
+        return self._fallback_random(objective_fn, n_calls)
+    
+    def _optimize_bayesian(self, objective_fn: Callable,
+                            n_calls: int,
+                            n_initial_points: int) -> OptimizationResult:
+        """Optimización Bayesiana con TPE."""
         dimensions = [Real(0.0, 1.0, name=n) for n in self.PARAM_NAMES]
         
         @use_named_args(dimensions)
@@ -52,10 +73,12 @@ class BayesianWeightOptimizer:
             normalized = {k: v / total for k, v in params.items()}
             try:
                 score = objective_fn(normalized)
+                if score != score:  # NaN
+                    return 1e6
+                return -score
             except Exception as e:
-                logger.warning(f"Error en objective: {e}")
+                logger.debug(f"Error en objective: {e}")
                 return 1e6
-            return -score
         
         result = gp_minimize(
             objective, dimensions,
@@ -66,18 +89,19 @@ class BayesianWeightOptimizer:
         
         best_params = dict(zip(self.PARAM_NAMES, result.x))
         total = sum(best_params.values())
-        best_weights = {k: v / total for k, v in best_params.items()}
+        best_weights = {k: v / total for k, v in best_params.items()} if total > 0 else {}
         
         return OptimizationResult(
             best_weights=best_weights,
             best_score=-result.fun,
             convergence=[-v for v in result.func_vals],
             n_iterations=len(result.func_vals),
+            method="bayesian",
         )
     
-    def _fallback(self, objective_fn: Callable,
-                  n_calls: int) -> OptimizationResult:
-        """Random search si skopt no está disponible."""
+    def _fallback_random(self, objective_fn: Callable,
+                          n_calls: int) -> OptimizationResult:
+        """Random search como fallback."""
         best_weights = None
         best_score = -float('inf')
         convergence = []
@@ -87,6 +111,8 @@ class BayesianWeightOptimizer:
             weights = dict(zip(self.PARAM_NAMES, raw))
             try:
                 score = objective_fn(weights)
+                if score != score:
+                    score = -1e6
             except Exception:
                 score = -1e6
             convergence.append(score)
@@ -94,9 +120,14 @@ class BayesianWeightOptimizer:
                 best_score = score
                 best_weights = weights
         
+        if best_weights is None:
+            n = len(self.PARAM_NAMES)
+            best_weights = {k: 1.0 / n for k in self.PARAM_NAMES}
+        
         return OptimizationResult(
-            best_weights=best_weights or {k: 1/6 for k in self.PARAM_NAMES},
+            best_weights=best_weights,
             best_score=best_score,
             convergence=convergence,
             n_iterations=n_calls,
+            method="random",
         )
