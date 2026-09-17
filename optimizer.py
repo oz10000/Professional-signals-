@@ -1,5 +1,5 @@
 """
-Optimización Bayesiana de pesos con fallback a random search.
+Optimización Bayesiana (TPE) de pesos con fallback a random search.
 """
 
 import logging
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OptimizationResult:
-    """Resultado de la optimización."""
     best_weights: Dict[str, float]
     best_score: float
     convergence: List[float]
@@ -40,29 +39,14 @@ class BayesianWeightOptimizer:
     def optimize(self, objective_fn: Callable[[Dict], float],
                  n_calls: int = 50,
                  n_initial_points: int = 10) -> OptimizationResult:
-        """
-        Optimiza pesos del scoring.
-        
-        Args:
-            objective_fn: Función que toma dict de pesos y retorna score.
-            n_calls: Número de evaluaciones.
-            n_initial_points: Puntos iniciales aleatorios.
-        
-        Returns:
-            OptimizationResult con mejores pesos.
-        """
         if SKOPT_AVAILABLE:
             try:
                 return self._optimize_bayesian(objective_fn, n_calls, n_initial_points)
             except Exception as e:
                 logger.warning(f"Bayesian optimization falló: {e}. Usando random search.")
-        
         return self._fallback_random(objective_fn, n_calls)
     
-    def _optimize_bayesian(self, objective_fn: Callable,
-                            n_calls: int,
-                            n_initial_points: int) -> OptimizationResult:
-        """Optimización Bayesiana con TPE."""
+    def _optimize_bayesian(self, objective_fn, n_calls, n_initial_points):
         dimensions = [Real(0.0, 1.0, name=n) for n in self.PARAM_NAMES]
         
         @use_named_args(dimensions)
@@ -73,11 +57,10 @@ class BayesianWeightOptimizer:
             normalized = {k: v / total for k, v in params.items()}
             try:
                 score = objective_fn(normalized)
-                if score != score:  # NaN
+                if score != score:
                     return 1e6
                 return -score
-            except Exception as e:
-                logger.debug(f"Error en objective: {e}")
+            except Exception:
                 return 1e6
         
         result = gp_minimize(
@@ -99,13 +82,10 @@ class BayesianWeightOptimizer:
             method="bayesian",
         )
     
-    def _fallback_random(self, objective_fn: Callable,
-                          n_calls: int) -> OptimizationResult:
-        """Random search como fallback."""
+    def _fallback_random(self, objective_fn, n_calls):
         best_weights = None
         best_score = -float('inf')
         convergence = []
-        
         for _ in range(n_calls):
             raw = np.random.dirichlet(np.ones(len(self.PARAM_NAMES)))
             weights = dict(zip(self.PARAM_NAMES, raw))
