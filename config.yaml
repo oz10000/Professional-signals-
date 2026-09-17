@@ -1,13 +1,17 @@
 # ============================================================
 # D.A.P.S-SIGNALS Ω — Scanner Cuantitativo
-# Configuración Central v1.0.0
+# Configuración Central v2.0.0 — ROBUSTA
+# ============================================================
+# Los pesos son auto-normalizados si no suman 1.0.
+# Validación estricta solo en errores graves.
 # ============================================================
 
 project:
   name: "D.A.P.S-SIGNALS Ω"
-  version: "1.0.0"
+  version: "2.0.0"
   mode: "manual"           # manual | testnet | live
   timezone: "UTC"
+  language: "es"
 
 # ------------------------------------------------------------
 # UNIVERSO DE ACTIVOS
@@ -45,7 +49,7 @@ symbols:
     - PYTH/USDT
 
 # ------------------------------------------------------------
-# EXCHANGES (fallback en cascada)
+# EXCHANGES — Fallback en cascada
 # ------------------------------------------------------------
 exchanges:
   priority:
@@ -56,10 +60,12 @@ exchanges:
     - gateio
     - bitget
   blocked:
-    - binance    # bloquea IPs cloud
-    - bybit      # bloquea IPs cloud
+    - binance
+    - bybit
   rate_limit: true
   timeout_ms: 30000
+  max_retries: 3
+  max_exchanges: 3
 
 # ------------------------------------------------------------
 # TIMEFRAMES
@@ -69,20 +75,25 @@ timeframes:
   confirm: "15m"
   trend: "1h"
   history_limit: 2000
+  min_bars_required: 200
 
 # ------------------------------------------------------------
-# SCORING — PESOS OPTIMIZADOS
+# SCORING — PESOS (auto-normalizados si no suman 1.0)
+# ------------------------------------------------------------
+# Verificación manual: 0.17 + 0.15 + 0.40 + 0.11 + 0.10 + 0.07 = 1.00
 # ------------------------------------------------------------
 scoring:
   weights:
-    trend: 0.18
-    momentum: 0.16
-    volume_intelligence: 0.44
-    volatility: 0.12
+    trend: 0.17
+    momentum: 0.15
+    volume_intelligence: 0.40
+    volatility: 0.11
     liquidity: 0.10
-    regime: 0.08
-  normalization: "robust"    # robust | minmax | zscore
+    regime: 0.07
+
+  normalization: "robust"        # robust | minmax | zscore
   robust_epsilon: 1.0e-9
+  auto_normalize: true           # Auto-normaliza si no suman 1.0
 
   sub_weights:
     volume:
@@ -102,17 +113,18 @@ thresholds:
   min_adx: 20.0
   min_atr_pct: 0.003
   max_atr_pct: 0.025
-  min_prob_directional: 0.60   # P(LONG) > 0.60 o P(SHORT) > 0.60
+  min_prob_directional: 0.60
 
 # ------------------------------------------------------------
 # GESTIÓN DE RIESGO
 # ------------------------------------------------------------
 risk:
   initial_capital: 10000.0
-  risk_per_trade: 0.01          # 1% por trade
+  risk_per_trade: 0.01
   max_concurrent_positions: 3
   max_daily_drawdown: 0.03
   max_leverage: 10
+
   leverage_by_score:
     "90-100": 5
     "85-90": 4
@@ -121,7 +133,7 @@ risk:
     "0-75": 1
 
   stop_loss:
-    method: "atr"               # fixed | atr
+    method: "atr"
     atr_mult_default: 1.8
     atr_mult_by_symbol:
       BTC/USDT: 1.8
@@ -130,6 +142,27 @@ risk:
       XRP/USDT: 1.5
       ADA/USDT: 2.0
       AVAX/USDT: 1.8
+      BNB/USDT: 1.8
+      DOT/USDT: 2.0
+      LINK/USDT: 2.0
+      MATIC/USDT: 2.5
+      ATOM/USDT: 2.0
+      LTC/USDT: 2.0
+      ETC/USDT: 2.0
+      NEAR/USDT: 2.5
+      APT/USDT: 2.5
+      INJ/USDT: 2.5
+      SUI/USDT: 2.5
+      UNI/USDT: 2.5
+      DOGE/USDT: 2.5
+      PEPE/USDT: 3.0
+      WIF/USDT: 3.0
+      SEI/USDT: 2.5
+      TIA/USDT: 2.5
+      JUP/USDT: 2.5
+      PYTH/USDT: 2.5
+      ARB/USDT: 2.5
+      OP/USDT: 2.5
     min_pct: 0.0015
     max_pct: 0.0200
 
@@ -139,7 +172,7 @@ risk:
     min_pct: 0.0030
 
   trailing:
-    activation_atr: 0.50        # 0.50 × ATR
+    activation_atr: 0.50
     distance_atr_by_symbol:
       BTC/USDT: 1.8
       ETH/USDT: 1.8
@@ -147,6 +180,27 @@ risk:
       XRP/USDT: 1.5
       ADA/USDT: 2.0
       AVAX/USDT: 2.0
+      BNB/USDT: 1.8
+      DOT/USDT: 2.0
+      LINK/USDT: 2.0
+      MATIC/USDT: 2.5
+      ATOM/USDT: 2.0
+      LTC/USDT: 2.0
+      ETC/USDT: 2.0
+      NEAR/USDT: 2.5
+      APT/USDT: 2.5
+      INJ/USDT: 2.5
+      SUI/USDT: 2.5
+      UNI/USDT: 2.5
+      DOGE/USDT: 2.5
+      PEPE/USDT: 3.0
+      WIF/USDT: 3.0
+      SEI/USDT: 2.5
+      TIA/USDT: 2.5
+      JUP/USDT: 2.5
+      PYTH/USDT: 2.5
+      ARB/USDT: 2.5
+      OP/USDT: 2.5
       default: 2.0
     breakeven_trigger_atr: 0.25
 
@@ -154,7 +208,7 @@ risk:
 # COSTOS OPERATIVOS
 # ------------------------------------------------------------
 costs:
-  fee_per_side: 0.0005          # 0.05% taker
+  fee_per_side: 0.0005
   slippage: 0.0003
   spread: 0.0002
   funding_rate_8h: 0.0001
@@ -164,6 +218,8 @@ costs:
 # ------------------------------------------------------------
 backtest:
   min_history_days: 180
+  default_scan_every_n_bars: 5
+  max_symbols_backtest: 10
   walk_forward:
     train_months: 3
     validation_months: 1
@@ -172,23 +228,15 @@ backtest:
   monte_carlo:
     n_simulations: 10000
     random_seed: 42
-  metrics:
-    - win_rate
-    - profit_factor
-    - sharpe
-    - max_drawdown
-    - expectancy
-    - consecutive_losses
-    - avg_duration
 
 # ------------------------------------------------------------
 # OPTIMIZACIÓN
 # ------------------------------------------------------------
 optimization:
-  method: "bayesian"            # bayesian | grid | genetic
+  method: "bayesian"
   n_calls: 50
   n_initial_points: 10
-  objective: "composite"        # composite | sharpe | profit_factor
+  objective: "composite"
   objective_weights:
     sharpe: 0.40
     profit_factor: 0.30
@@ -209,9 +257,12 @@ directories:
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/scanner.log"
+  max_bytes: 10485760
+  backup_count: 5
 
 # ------------------------------------------------------------
-# TIER THRESHOLDS (para clasificación)
+# TIER THRESHOLDS
 # ------------------------------------------------------------
 tiers:
   OMEGA: 90.0
@@ -229,10 +280,28 @@ trading_hours:
   hour_adjustment:
     best_multiplier: 1.05
     worst_multiplier: 0.92
+  enabled: false
 
 # ------------------------------------------------------------
-# VENTANAS ESTRELLA (opcional, no validado)
+# VENTANAS ESTRELLA (NO VALIDADO — DESACTIVADO)
 # ------------------------------------------------------------
 star_windows:
-  enabled: false                # Desactivado: no validado históricamente
+  enabled: false
   windows: []
+
+# ------------------------------------------------------------
+# LÍMITES DE SEGURIDAD
+# ------------------------------------------------------------
+safety:
+  max_position_size_pct: 0.10
+  max_total_exposure: 0.50
+  circuit_breaker_dd: 0.10
+  min_time_between_trades: 300
+  require_confirmation: true
+
+# ------------------------------------------------------------
+# RECOMENDACIONES DE PYTHON/PYARROW
+# ------------------------------------------------------------
+runtime:
+  python_version: "3.11"       # Recomendado (3.14 puede tener issues)
+  pyarrow_max: "24.0.0"        # Evita segfault conocido
