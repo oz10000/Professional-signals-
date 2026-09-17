@@ -1,9 +1,18 @@
-streamlit>=1.28.0
-pandas>=2.0.0
-numpy>=1.24.0
+# ============================================================
+# D.A.P.S-SIGNALS Ω — Dependencias
+# ============================================================
+# Notas:
+# - pyarrow <25 para evitar segfault conocido (apache/arrow#50471)
+# - scikit-optimize para Bayesian Optimization
+# - streamlit >=1.28 para use_container_width
+# ============================================================
+
+streamlit>=1.28.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+numpy>=1.24.0,<3.0.0
 ccxt>=4.0.0
 pyyaml>=6.0
 scikit-optimize>=0.9.0
-pyarrow>=14.0.0
+pyarrow>=14.0.0,<25.0.0
 plotly>=5.14.0
 scipy>=1.10.0
