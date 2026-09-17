@@ -1,21 +1,17 @@
 # ============================================================
 # D.A.P.S-SIGNALS Ω — Scanner Cuantitativo
-# Configuración Central v3.0.0 — OPTIMIZADA
-# Universo: Top 70 activos por market cap (CoinLore, Sep 2026)
+# Configuración Central v3.0.1 — 33 ACTIVOS
 # ============================================================
 
 project:
   name: "D.A.P.S-SIGNALS Ω"
-  version: "3.0.0"
+  version: "3.0.1"
   mode: "manual"
   timezone: "UTC"
   language: "es"
 
 # ------------------------------------------------------------
-# UNIVERSO: TOP 70 POR MARKET CAP
-# Fuente: CoinLore Top 100 Coins (Sep 2026)
-# Excluidos: stablecoins (USDT, USDC, DAI, etc.),
-#            wrapped tokens (STETH, WBTC, WBETH, etc.)
+# UNIVERSO: PRIMEROS 33 ACTIVOS POR MARKET CAP
 # ------------------------------------------------------------
 symbols:
   top_10:
@@ -50,51 +46,11 @@ symbols:
     - TIA/USDT
     - DCR/USDT
     - XTZ/USDT
-  top_31_70:
+  top_31_33:
     - CFX/USDT
     - KAIA/USDT
     - IOTA/USDT
-    - NEO/USDT
-    - MANA/USDT
-    - GLM/USDT
-    - ZEN/USDT
-    - QTUM/USDT
-    - ZRX/USDT
-    - AIOZ/USDT
-    - HNT/USDT
-    - DGB/USDT
-    - ZANO/USDT
-    - KAVA/USDT
-    - TFUEL/USDT
-    - HOT/USDT
-    - ZIG/USDT
-    - SC/USDT
-    - ZIL/USDT
-    - CKB/USDT
-    - LSK/USDT
-    - ONT/USDT
-    - CTC/USDT
-    - TRB/USDT
-    - BFC/USDT
-    - NANO/USDT
-    - AXL/USDT
-    - FLOW/USDT
-    - ARRR/USDT
-    - XVG/USDT
-    - COTI/USDT
-    - CSPR/USDT
-    - G/USDT
-    - RON/USDT
-    - PLUME/USDT
-    - RVN/USDT
-    - WAVES/USDT
-    - PEAQ/USDT
-    - VANA/USDT
-    - IOTX/USDT
 
-# ------------------------------------------------------------
-# EXCHANGES
-# ------------------------------------------------------------
 exchanges:
   priority:
     - okx
@@ -111,9 +67,6 @@ exchanges:
   max_retries: 3
   max_exchanges: 3
 
-# ------------------------------------------------------------
-# TIMEFRAMES
-# ------------------------------------------------------------
 timeframes:
   entry: "5m"
   confirm: "15m"
@@ -121,9 +74,6 @@ timeframes:
   history_limit: 2000
   min_bars_required: 200
 
-# ------------------------------------------------------------
-# SCORING — PESOS OPTIMIZADOS
-# ------------------------------------------------------------
 scoring:
   weights:
     trend: 0.17
@@ -132,7 +82,6 @@ scoring:
     volatility: 0.11
     liquidity: 0.10
     regime: 0.07
-    # Suma: 1.00 ✓
   auto_normalize: true
   normalization: "robust"
   robust_epsilon: 1.0e-9
@@ -146,11 +95,7 @@ scoring:
       ofi: 0.25
       rvol: 0.25
       cvd: 0.15
-      # Suma: 1.00 ✓
 
-# ------------------------------------------------------------
-# UMBRALES DINÁMICOS POR RÉGIMEN
-# ------------------------------------------------------------
 thresholds:
   regime_thresholds:
     Expansion:    {min_score: 75, min_adx: 20, min_rvol: 1.5}
@@ -159,11 +104,8 @@ thresholds:
     Chop:         {min_score: 65, min_adx: 15, min_rvol: 2.0}
   min_prob_directional: 0.60
   max_cost_pct: 0.0016
-  min_expected_move_pct: 0.0032   # 2× costo round trip
+  min_expected_move_pct: 0.0032
 
-# ------------------------------------------------------------
-# GESTIÓN DE RIESGO
-# ------------------------------------------------------------
 risk:
   initial_capital: 10000.0
   risk_per_trade: 0.01
@@ -249,22 +191,16 @@ risk:
     activation_atr: 0.50
     breakeven_trigger_atr: 0.25
 
-# ------------------------------------------------------------
-# COSTOS OPERATIVOS
-# ------------------------------------------------------------
 costs:
   fee_per_side: 0.0005
   slippage: 0.0003
   spread: 0.0002
   funding_rate_8h: 0.0001
 
-# ------------------------------------------------------------
-# BACKTEST Y VALIDACIÓN
-# ------------------------------------------------------------
 backtest:
   min_history_days: 180
   default_scan_every_n_bars: 5
-  max_symbols_backtest: 20
+  max_symbols_backtest: 10
   walk_forward:
     train_months: 3
     test_months: 1
@@ -277,9 +213,6 @@ backtest:
     min_dsr: 0.0
     max_p_value: 0.05
 
-# ------------------------------------------------------------
-# OPTIMIZACIÓN
-# ------------------------------------------------------------
 optimization:
   method: "bayesian"
   n_calls: 50
@@ -290,18 +223,12 @@ optimization:
     profit_factor: 0.30
     max_drawdown: 0.30
 
-# ------------------------------------------------------------
-# DIRECTORIOS
-# ------------------------------------------------------------
 directories:
   cache: "./cache"
   data: "./data"
   logs: "./logs"
   reports: "./reports"
 
-# ------------------------------------------------------------
-# LOGGING
-# ------------------------------------------------------------
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -309,9 +236,6 @@ logging:
   max_bytes: 10485760
   backup_count: 5
 
-# ------------------------------------------------------------
-# TIER THRESHOLDS
-# ------------------------------------------------------------
 tiers:
   OMEGA: 90.0
   S: 80.0
@@ -319,9 +243,6 @@ tiers:
   B: 60.0
   NO_TRADE: 0.0
 
-# ------------------------------------------------------------
-# LÍMITES DE SEGURIDAD
-# ------------------------------------------------------------
 safety:
   max_position_size_pct: 0.10
   max_total_exposure: 0.50
